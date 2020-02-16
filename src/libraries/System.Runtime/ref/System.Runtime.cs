@@ -6700,6 +6700,16 @@ namespace System.Reflection
         public virtual bool IsAssignableFrom([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] System.Reflection.TypeInfo? typeInfo) { throw null; }
         System.Reflection.TypeInfo System.Reflection.IReflectableType.GetTypeInfo() { throw null; }
     }
+    public sealed partial class UninitializedObjectFactory<T> : IUninitializedObjectFactory where T : class
+    {
+        public UninitializedObjectFactory() { }
+        public T CreateUninitializedObject() { throw null; }
+        object? IUninitializedObjectFactory.CreateUninitializedObject() { throw null; }
+    }
+    public interface IUninitializedObjectFactory
+    {
+        object? CreateUninitializedObject();
+    }
 }
 namespace System.Resources
 {

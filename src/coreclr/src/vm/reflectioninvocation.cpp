@@ -2402,6 +2402,69 @@ FCIMPL1(Object*, ReflectionSerialization::GetUninitializedObject, ReflectClassBa
 }
 FCIMPLEND
 
+FCIMPL1(void*, ReflectionSerialization::GetNewobjHelper, ReflectClassBaseObject* objTypeUNSAFE) {
+    FCALL_CONTRACT;
+
+    void*               retVal = NULL;
+    REFLECTCLASSBASEREF objType = (REFLECTCLASSBASEREF)objTypeUNSAFE;
+
+    HELPER_METHOD_FRAME_BEGIN_RET_NOPOLL();
+
+    TypeHandle type = objType->GetType();
+
+    // Don't allow arrays, pointers, byrefs or function pointers.
+    if (type.IsTypeDesc() || type.IsArray())
+        COMPlusThrow(kArgumentException, W("Argument_InvalidValue"));
+
+    MethodTable* pMT = type.AsMethodTable();
+    PREFIX_ASSUME(pMT != NULL);
+
+    //We don't allow unitialized Strings or Utf8Strings.
+    if (pMT == g_pStringClass
+#ifdef FEATURE_UTF8STRING
+        || pMT == g_pUtf8StringClass
+#endif // FEATURE_UTF8STRING
+        ) {
+        COMPlusThrow(kArgumentException, W("Argument_NoUninitializedStrings"));
+    }
+
+    // if this is an abstract class or an interface type then we will
+    //  fail this
+    if (pMT->IsAbstract()) {
+        COMPlusThrow(kMemberAccessException, W("Acc_CreateAbst"));
+    }
+
+    if (pMT->ContainsGenericVariables()) {
+        COMPlusThrow(kMemberAccessException, W("Acc_CreateGeneric"));
+    }
+
+    if (pMT->IsByRefLike()) {
+        COMPlusThrow(kNotSupportedException, W("NotSupported_ByRefLike"));
+    }
+
+    // Never allow allocation of generics actually instantiated over __Canon
+    if (pMT->IsSharedByGenericInstantiations()) {
+        COMPlusThrow(kNotSupportedException, W("NotSupported_Type"));
+    }
+
+    // Never allow the allocation of an unitialized ContextBoundObject derived type, these must always be created with a paired
+    // transparent proxy or the jit will get confused.
+
+#ifdef FEATURE_COMINTEROP
+    // Also do not allow allocation of uninitialized RCWs (COM objects).
+    if (pMT->IsComObjectType())
+        COMPlusThrow(kNotSupportedException, W("NotSupported_ManagedActivation"));
+#endif // FEATURE_COMINTEROP
+
+    // TODO: Don't use a void* cast below.
+
+    retVal = (void*)CEEJitInfo::getHelperFtnStatic(CEEInfo::getNewHelperStatic(pMT));
+
+    HELPER_METHOD_FRAME_END();
+    return retVal;
+}
+FCIMPLEND
+
 //*************************************************************************************************
 //*************************************************************************************************
 //*************************************************************************************************
