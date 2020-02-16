@@ -2,16 +2,26 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using System.Collections.Generic;
-using System.Collections.Tests;
-using System.Diagnostics;
-using System.Runtime.Serialization.Formatters.Tests;
 using Xunit;
 
 namespace System.Reflection.Tests
 {
     public class UninitializedObjectFactoryTests
     {
+        [Fact]
+        public void CreateInitializedInstance()
+        {
+            var factory = new ObjectFactory<SampleClass>();
+            var retVal = factory.CreateObject();
+            Assert.IsType<SampleClass>(retVal);
+            Assert.True(retVal.HasInstanceConstructorRun);
+
+            var factory2 = (IObjectFactory)factory;
+            var retVal2 = factory2.CreateObject();
+            Assert.IsType<SampleClass>(retVal2);
+            Assert.True(((SampleClass)retVal2).HasInstanceConstructorRun);
+        }
+
         [Fact]
         public void CreateUninitializedInstance()
         {
@@ -28,7 +38,6 @@ namespace System.Reflection.Tests
 
         private class SampleClass
         {
-            public static bool HasStaticConstructorRun = true;
             public bool HasInstanceConstructorRun = true;
         }
     }
