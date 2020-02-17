@@ -8,11 +8,12 @@ using Xunit.Sdk;
 
 namespace System.Reflection.Tests
 {
-    public class UninitializedObjectFactoryTests
+    public class ObjectFactoryTests
     {
         [Theory]
         [InlineData(null)]
         [InlineData(typeof(AbstractClass))]
+        [InlineData(typeof(ClassWithoutParameterlessCtor))]
         [InlineData(typeof(int*))]
         [InlineData(typeof(ReadOnlySpan<byte>))]
         [InlineData(typeof(string))]
@@ -23,14 +24,14 @@ namespace System.Reflection.Tests
         {
             try
             {
-                var factory = UninitializedObjectFactory.CreateFactory(type);
+                var factory = ObjectFactory.CreateFactory(type);
             }
             catch
             {
                 return; // success!
             }
 
-            throw new XunitException("Didn't expect UninitializedObjectFactory ctor to succeed.");
+            throw new XunitException("Didn't expect ObjectFactory ctor to succeed.");
         }
 
         [Fact]
@@ -52,17 +53,16 @@ namespace System.Reflection.Tests
             RunTests<object>();
             RunTests<int>(i => Assert.Equal(0, i));
             RunTests<int?>();
-            RunTests<SampleClass>(obj => Assert.False(obj.HasInstanceCtorRun));
-            RunTests<ClassWithoutParameterlessCtor>(obj => Assert.False(obj.HasInstanceCtorRun));
+            RunTests<SampleClass>(obj => Assert.True(obj.HasInstanceCtorRun));
         }
 
         private static void RunTests<T>(Action<T> verifier = null)
         {
             bool isNullableOfT = typeof(T).IsValueType && default(T) == null;
 
-            UninitializedObjectFactory factory1 = UninitializedObjectFactory.CreateFactory(typeof(T));
+            ObjectFactory factory1 = ObjectFactory.CreateFactory(typeof(T));
             Assert.Equal(typeof(T), factory1.TargetType);
-            object retVal1 = factory1.CreateUninitializedInstance();
+            object retVal1 = factory1.CreateInstance();
 
             if (isNullableOfT)
             {
@@ -74,9 +74,9 @@ namespace System.Reflection.Tests
                 verifier?.Invoke((T)retVal1);
             }
 
-            UninitializedObjectFactory<T> factory2 = UninitializedObjectFactory.CreateFactory<T>();
+            ObjectFactory<T> factory2 = ObjectFactory.CreateFactory<T>();
             Assert.Equal(typeof(T), factory2.TargetType);
-            T retVal2 = factory2.CreateUninitializedInstance();
+            T retVal2 = factory2.CreateInstance();
 
             if (isNullableOfT)
             {
@@ -98,7 +98,6 @@ namespace System.Reflection.Tests
 
         public class ClassWithoutParameterlessCtor
         {
-            public bool HasInstanceCtorRun = true;
             public ClassWithoutParameterlessCtor(int unused) { }
         }
 

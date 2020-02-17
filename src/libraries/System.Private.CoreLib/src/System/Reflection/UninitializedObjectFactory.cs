@@ -2,13 +2,61 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Internal.Runtime.CompilerServices;
 
 namespace System.Reflection
 {
-    internal static class UninitializedObjectFactory
+    public abstract class UninitializedObjectFactory
     {
-        public static (IntPtr typeHnd, IntPtr newobjFn) GetParameters(Type type)
+        private protected UninitializedObjectFactory(RuntimeType targetType)
+        {
+            Debug.Assert(targetType != null);
+            TargetType = targetType;
+        }
+
+        public Type TargetType { get; }
+
+        public static UninitializedObjectFactory CreateFactory(Type type)
+        {
+            if (type is null)
+            {
+                throw new ArgumentNullException(nameof(type));
+            }
+
+            if (!(type is RuntimeType rt))
+            {
+                throw new ArgumentException(
+                    paramName: nameof(type),
+                    message: SR.Argument_MustBeRuntimeType);
+            }
+
+            type = null!; // just to make sure we don't use Type for the rest of the method
+
+            if (rt.IsPointer || rt.IsByRef || rt.IsByRefLike)
+            {
+                throw new ArgumentException(
+                    paramName: nameof(type),
+                    message: SR.NotSupported_Type);
+            }
+
+            RuntimeType closedFactoryType = (RuntimeType)typeof(UninitializedObjectFactory<>).MakeGenericType(rt);
+            return (UninitializedObjectFactory)closedFactoryType.CreateInstanceDefaultCtor(publicOnly: false, skipCheckThis: false, fillCache: false, wrapExceptions: false)!;
+        }
+
+        public static UninitializedObjectFactory<T> CreateFactory<T>()
+        {
+            return new UninitializedObjectFactory<T>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public object? CreateUninitializedInstance()
+        {
+            return Unsafe.As<IInternalObjectFactory>(this).Invoke();
+        }
+
+        internal static (IntPtr typeHnd, IntPtr newobjFn) GetParameters(Type type)
         {
             if (type is null)
             {
@@ -38,21 +86,22 @@ namespace System.Reflection
         }
     }
 
-    public sealed class UninitializedObjectFactory<T> : IUninitializedObjectFactory
+    public sealed class UninitializedObjectFactory<T> : UninitializedObjectFactory, IInternalObjectFactory
     {
         private readonly IntPtr _typeHnd;
         private readonly IntPtr _newobjFn;
 
-        public UninitializedObjectFactory()
+        internal UninitializedObjectFactory()
+            : base((RuntimeType)typeof(T))
         {
             if (!typeof(T).IsValueType)
             {
-                (_typeHnd, _newobjFn) = UninitializedObjectFactory.GetParameters(typeof(T));
+                (_typeHnd, _newobjFn) = GetParameters(typeof(T));
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T CreateUninitializedObject()
+        public new T CreateUninitializedInstance()
         {
             if (typeof(T).IsValueType)
             {
@@ -66,11 +115,11 @@ namespace System.Reflection
             }
         }
 
-        object? IUninitializedObjectFactory.CreateUninitializedObject()
+        object? IInternalObjectFactory.Invoke()
         {
             if (typeof(T).IsValueType)
             {
-                return default!;
+                return default(T);
             }
             else
             {
@@ -79,10 +128,5 @@ namespace System.Reflection
                 return retVal;
             }
         }
-    }
-
-    public interface IUninitializedObjectFactory
-    {
-        object? CreateUninitializedObject();
     }
 }

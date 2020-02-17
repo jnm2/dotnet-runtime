@@ -6385,6 +6385,19 @@ namespace System.Reflection
         public string? Feature { get { throw null; } set { } }
         public bool StripAfterObfuscation { get { throw null; } set { } }
     }
+    public abstract partial class ObjectFactory
+    {
+        private protected ObjectFactory() { }
+        public System.Type TargetType { get { throw null; } }
+        public static System.Reflection.ObjectFactory CreateFactory(System.Type type) { throw null; }
+        public static System.Reflection.ObjectFactory<T> CreateFactory<T>() { throw null; }
+        public object? CreateInstance() { throw null; }
+    }
+    public sealed partial class ObjectFactory<T> : System.Reflection.ObjectFactory
+    {
+        private ObjectFactory() { }
+        public new T CreateInstance() { throw null; }
+    }
     [System.FlagsAttribute]
     public enum ParameterAttributes
     {
@@ -6700,25 +6713,18 @@ namespace System.Reflection
         public virtual bool IsAssignableFrom([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] System.Reflection.TypeInfo? typeInfo) { throw null; }
         System.Reflection.TypeInfo System.Reflection.IReflectableType.GetTypeInfo() { throw null; }
     }
-    public sealed partial class UninitializedObjectFactory<T> : IUninitializedObjectFactory where T : class
+    public abstract partial class UninitializedObjectFactory
     {
-        public UninitializedObjectFactory() { }
-        public T CreateUninitializedObject() { throw null; }
-        object? IUninitializedObjectFactory.CreateUninitializedObject() { throw null; }
+        private protected UninitializedObjectFactory() { }
+        public System.Type TargetType { get { throw null; } }
+        public static System.Reflection.UninitializedObjectFactory CreateFactory(System.Type type) { throw null; }
+        public static System.Reflection.UninitializedObjectFactory<T> CreateFactory<T>() { throw null; }
+        public object? CreateUninitializedInstance() { throw null; }
     }
-    public interface IUninitializedObjectFactory
+    public sealed partial class UninitializedObjectFactory<T> : System.Reflection.UninitializedObjectFactory
     {
-        object? CreateUninitializedObject();
-    }
-    public sealed partial class ObjectFactory<T> : IObjectFactory where T : class, new()
-    {
-        public ObjectFactory() { }
-        public T CreateObject() { throw null; }
-        object? IObjectFactory.CreateObject() { throw null; }
-    }
-    public interface IObjectFactory
-    {
-        object? CreateObject();
+        private UninitializedObjectFactory() { }
+        public new T CreateUninitializedInstance() { throw null; }
     }
 }
 namespace System.Resources
