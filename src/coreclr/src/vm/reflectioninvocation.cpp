@@ -2420,11 +2420,8 @@ FCIMPL1(void*, ReflectionSerialization::GetNewobjHelper, ReflectClassBaseObject*
     PREFIX_ASSUME(pMT != NULL);
 
     //We don't allow unitialized Strings or Utf8Strings.
-    if (pMT == g_pStringClass
-#ifdef FEATURE_UTF8STRING
-        || pMT == g_pUtf8StringClass
-#endif // FEATURE_UTF8STRING
-        ) {
+    if (pMT->HasComponentSize())
+    {
         COMPlusThrow(kArgumentException, W("Argument_NoUninitializedStrings"));
     }
 
@@ -2455,6 +2452,15 @@ FCIMPL1(void*, ReflectionSerialization::GetNewobjHelper, ReflectClassBaseObject*
     if (pMT->IsComObjectType())
         COMPlusThrow(kNotSupportedException, W("NotSupported_ManagedActivation"));
 #endif // FEATURE_COMINTEROP
+
+    Assembly* pAssem = pMT->GetAssembly();
+
+    if (!pMT->IsClassInited())
+    {
+        pMT->CheckRestore();
+        pMT->EnsureInstanceActive();
+        pMT->CheckRunClassInitThrowing();
+    }
 
     // TODO: Don't use a void* cast below.
 

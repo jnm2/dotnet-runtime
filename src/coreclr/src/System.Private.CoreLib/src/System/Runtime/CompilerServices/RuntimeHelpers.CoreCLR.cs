@@ -158,7 +158,7 @@ namespace System.Runtime.CompilerServices
 
         [Intrinsic]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static object InvokeNewobjHelper(IntPtr typeHnd, IntPtr newobjFn)
+        internal static T InvokeNewobjHelper<T>(IntPtr typeHnd, IntPtr newobjFn)
         {
             // The body of this function will be replaced by the EE with unsafe code!!!
             // See getILIntrinsicImplementationForRuntimeHelpers for how this happens.

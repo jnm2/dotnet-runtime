@@ -3,11 +3,10 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Runtime.CompilerServices;
-using Internal.Runtime.CompilerServices;
 
 namespace System.Reflection
 {
-    public sealed class ObjectFactory<T> : IObjectFactory where T : class, new()
+    public sealed class ObjectFactory<T> : IObjectFactory
     {
         private readonly IntPtr _typeHnd;
         private readonly IntPtr _newobjFn;
@@ -15,44 +14,49 @@ namespace System.Reflection
 
         public ObjectFactory()
         {
-            // TODO: Make sure T isn't array or string
-            // TODO: Special-case reference type T vs. value type T
+            if (!typeof(T).IsValueType)
+            {
+                (_typeHnd, _newobjFn) = UninitializedObjectFactory.GetParameters(typeof(T));
 
-            RuntimeType rt = typeof(T) as RuntimeType ?? throw new NotSupportedException();
+                ConstructorInfo? ci = typeof(T).GetConstructor(Type.EmptyTypes);
+                if (ci is null)
+                {
+                    throw new InvalidOperationException(); // TODO: replace with real error message
+                }
 
-            RuntimeHelpers.RunClassConstructor(rt.GetTypeHandleInternal());
-            _typeHnd = rt.GetTypeHandleInternal().Value;
-            _newobjFn = RuntimeHelpers.GetNewobjHelper(typeof(T));
-            _ctorFn = typeof(T).GetConstructor(Type.EmptyTypes)!.MethodHandle.GetFunctionPointer();
+                _ctorFn = ci.MethodHandle.GetFunctionPointer();
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T CreateObject()
         {
-            T retVal = Unsafe.As<T>(RuntimeHelpers.InvokeNewobjHelper(_typeHnd, _newobjFn));
-
-            if (!typeof(T).IsValueType)
+            if (typeof(T).IsValueType)
             {
-                // call parameterless ctor
-                RuntimeHelpers.InvokeCtor(retVal, _ctorFn);
+                return default!;
             }
-
-            GC.KeepAlive(this); // keeps 'T' instantiation alive
-            return retVal;
+            else
+            {
+                T retVal = RuntimeHelpers.InvokeNewobjHelper<T>(_typeHnd, _newobjFn);
+                RuntimeHelpers.InvokeCtor(retVal!, _ctorFn); // call parameterless ctor
+                GC.KeepAlive(this); // keeps 'T' instantiation alive
+                return retVal;
+            }
         }
 
         object? IObjectFactory.CreateObject()
         {
-            object retVal = RuntimeHelpers.InvokeNewobjHelper(_typeHnd, _newobjFn);
-
-            if (!typeof(T).IsValueType)
+            if (typeof(T).IsValueType)
             {
-                // call parameterless ctor
-                RuntimeHelpers.InvokeCtor(retVal, _ctorFn);
+                return default!;
             }
-
-            GC.KeepAlive(this); // keeps 'T' instantiation alive
-            return retVal;
+            else
+            {
+                T retVal = RuntimeHelpers.InvokeNewobjHelper<T>(_typeHnd, _newobjFn);
+                RuntimeHelpers.InvokeCtor(retVal!, _ctorFn); // call parameterless ctor
+                GC.KeepAlive(this); // keeps 'T' instantiation alive
+                return retVal;
+            }
         }
     }
 
