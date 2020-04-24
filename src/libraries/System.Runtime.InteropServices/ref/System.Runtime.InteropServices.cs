@@ -83,6 +83,10 @@ namespace System.Runtime.CompilerServices
         public IDispatchConstantAttribute() { }
         public override object Value { get { throw null; } }
     }
+    [System.AttributeUsageAttribute(System.AttributeTargets.Method)]
+    public sealed class ModuleInitializerAttribute : System.Attribute
+    {
+    }
     [System.AttributeUsageAttribute(System.AttributeTargets.Field | System.AttributeTargets.Parameter, Inherited=false)]
     public sealed partial class IUnknownConstantAttribute : System.Runtime.CompilerServices.CustomConstantAttribute
     {
